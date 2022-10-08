@@ -9,11 +9,23 @@ import sys
 def read_file(fname):
     tables = tabula.read_pdf(fname, pages="all")
 
+    with open(fname.replace("pdf", "txt")) as f:
+        txtlines = [i.strip() for i in f.readlines() if i.strip()]
+        txtlines = [
+            i for i in txtlines if all(j in "ABCDEFGHIJKLMNOPQRSTUVWXYZ& " for j in i)
+        ]
+
+        print(txtlines)
+
+    txtpos = 0
+
     fund = 1000
     vendor = ""
 
     broken = False
 
+    expect_vendor = True
+    vendor_guess_confidence = False
     for table in tables:
         if broken:
             break
@@ -30,8 +42,6 @@ def read_file(fname):
 
             data = list(row[1])
             data = [i.replace("\r", " ") if isinstance(i, str) else i for i in data if str(i) != "nan"]
-
-            print(data)
 
             if "$" in data:
                 break
@@ -69,6 +79,7 @@ def read_file(fname):
                 continue
 
             if "Total Paid by Vendor" in data or (isinstance(data[0], str) and "Total Paid by Vendor" in data[0]):
+                expect_vendor = True
                 continue
 
             if isinstance(data[0], str) and data[0].startswith("Total by Fund "):
@@ -93,7 +104,22 @@ def read_file(fname):
 
             print(data)
             if isinstance(data[0], str) and not (data[0][:4].isnumeric() and data[0][4] == "-"):
+                expect_vendor = False
                 vendor = data.pop(0)
+                try:
+                    opos = txtpos
+                    txtpos = txtlines.index(vendor, txtpos)
+                    print(txtpos - opos)
+                    if txtpos - opos > 30000:
+                        txtpos = opos
+                    else:
+                        vendor_guess_confidence = True
+                except ValueError:
+                    try:
+                        txtpos = txtlines.index(vendor)
+                    except ValueError:
+                        txtpos = opos
+                    vendor_guess_confidence = False
 
             if len(data) == 5:
                 line_item_desc = ""
@@ -121,6 +147,30 @@ def read_file(fname):
             fund = subs[0]
             account = subs[1]
             subaccount = "-".join(subs[2:])
+
+            if expect_vendor:
+                maybe_vendor = None
+
+
+                if line_item_desc.startswith("FUELING TRANS"):
+                    maybe_vendor = "DUTCH OIL COMPANY INC"
+                elif line_item_desc.startswith("NAPA TRX"):
+                    maybe_vendor = "MADISON COUNTY AUTO PARTS INC"
+                else:
+                    maybe_vendor = txtlines[txtpos + 1]
+                    txtpos += 1
+
+                if maybe_vendor:
+                    print(f"(probably: {maybe_vendor})")
+                    if not vendor_guess_confidence:
+                        print("but maybe not")
+
+
+                vendor = input("VENDOR: ")
+
+                if not vendor and maybe_vendor is not None:
+                    vendor = maybe_vendor
+                expect_vendor = False
 
             yield fund, account, subaccount, long_account, vendor, invoice, line_item_desc, check, date, amount
 
