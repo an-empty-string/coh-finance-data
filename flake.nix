@@ -13,6 +13,7 @@
         (python310.withPackages (p: with p; [
           tabula-py
           setuptools
+          requests
         ]))
       ];
     };

@@ -4,8 +4,14 @@ import sys
 data = []
 header = None
 
+
 def spnorm(s):
     return " ".join(s.split())
+
+
+def vnorm(s):
+    return s.removesuffix(".")
+
 
 for i in sys.argv[1:-1]:
     if i == sys.argv[-1]:
@@ -21,15 +27,37 @@ for i in sys.argv[1:-1]:
                 header = row
                 continue
 
-            fund, account, subaccount, long_account, vendor, invoice, line_item_desc, check, date, amount = row
+            (
+                fund,
+                account,
+                subaccount,
+                long_account,
+                vendor,
+                invoice,
+                line_item_desc,
+                check,
+                date,
+                amount,
+            ) = row
 
-            vendor = spnorm(vendor)
+            vendor = vnorm(spnorm(vendor))
             invoice = spnorm(invoice)
             line_item_desc = spnorm(line_item_desc)
             if check.endswith(".0"):
                 check = check[:-2]
 
-            row = fund, account, subaccount, long_account, vendor, invoice, line_item_desc, check, date, amount
+            row = (
+                fund,
+                account,
+                subaccount,
+                long_account,
+                vendor,
+                invoice,
+                line_item_desc,
+                check,
+                date,
+                amount,
+            )
 
             data.append(row)
 
